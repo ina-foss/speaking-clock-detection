@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "speaking_clock_detection"
+version = "1.0.0"
+requires-python = ">= 3.6"
+dependencies = [
+	"soundfile",
+	"scipy",
+	"numpy"
+]
+authors = [
+	{name = "David Doukhan", email = "ddoukhan@ina.fr"},
+	{name = "Anne Archibald"},
+	{name = "Cournapeau David", email = "cournape@gmail.com"},
+	{name = "Valentin Pelloin", email = "vpelloin@ina.fr"}
+]
+
+[tool.setuptools]
+script-files = ["scripts/speaking_clock_detection.py"]
