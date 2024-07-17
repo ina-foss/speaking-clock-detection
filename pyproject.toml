@@ -19,4 +19,4 @@ authors = [
 ]
 
 [tool.setuptools]
-script-files = ["scripts/speaking_clock_detection.py"]
+script-files = ["scripts/speaking_clock_detection"]
