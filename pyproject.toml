@@ -3,7 +3,7 @@ requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "speaking_clock_detection"
+name = "speaking-clock-detection"
 version = "1.0.0"
 requires-python = ">= 3.6"
 dependencies = [

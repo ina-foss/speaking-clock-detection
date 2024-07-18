@@ -5,7 +5,7 @@ This tool can be used to detect on which channel a [speaking clock](https://en.w
 ## Installation
 
 ```bash
-pip3 install speaking_clock_detection
+pip3 install speaking-clock-detection
 ```
 
 ## Usage
