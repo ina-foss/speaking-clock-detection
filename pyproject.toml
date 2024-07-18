@@ -14,7 +14,6 @@ dependencies = [
 ]
 authors = [
 	{name = "David Doukhan", email = "ddoukhan@ina.fr"},
-	{name = "Anne Archibald"},
 	{name = "Cournapeau David", email = "cournape@gmail.com"},
 	{name = "Valentin Pelloin", email = "vpelloin@ina.fr"}
 ]
