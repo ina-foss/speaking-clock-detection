@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "speaking-clock-detection"
 version = "1.0.0"
 requires-python = ">= 3.6"
+readme = "README.md"
 dependencies = [
 	"soundfile",
 	"scipy",
