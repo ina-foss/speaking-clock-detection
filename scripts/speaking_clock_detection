@@ -27,6 +27,9 @@ def segment_axis(a, length, overlap=0, axis=None, end='cut', endvalue=0):
     into overlapping frames.
     This code has been implemented by Anne Archibald, and has been discussed on the
     ML.
+    This function has been taken and adapted from the scikits.talkbox module
+    by Cournapeau David:
+    https://github.com/cournape/talkbox/blob/ee0ec30a6a6d483eb9284f72bdaf26bd99765f80/scikits/talkbox/tools/segmentaxis.py#L9
     example:
     >>> segment_axis(arange(10), 4, 2)
     array([[0, 1, 2, 3],
