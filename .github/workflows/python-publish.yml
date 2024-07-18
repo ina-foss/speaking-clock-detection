@@ -11,17 +11,18 @@ name: Upload Python Package
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
   
-environment: publish
 
 jobs:
   deploy:
 
     runs-on: ubuntu-latest
+    environment: publish
 
     steps:
     - uses: actions/checkout@v4
