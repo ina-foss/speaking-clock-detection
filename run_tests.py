@@ -27,7 +27,6 @@
 import os
 import multiprocessing as mp
 import unittest
-import warnings
 from inaudible.speaking_clock_detection import speaking_clock_detection
 
 testpath = '/rex/store2a/home/ddoukhan/2018_09_16_lucrate_titan/ddoukhan/corpus_horlange_parlante/'
@@ -40,7 +39,13 @@ postiveoutput = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 
 
 
 def myspeakingclock(x):
-    return speaking_clock_detection(x, '/tmp/', 'ffmpeg')
+    return speaking_clock_detection(x, 'ffmpeg')
+
+
+def myspeakingclock_short(x):
+    # test on 10 mins max
+    return speaking_clock_detection(x, 'ffmpeg', dur_sec=60*10)
+
 
 class TestSpeakingClock(unittest.TestCase):
     def test_positive(self):
@@ -56,13 +61,28 @@ class TestSpeakingClock(unittest.TestCase):
         p = testpath + 'negative/'
         fl = sorted(os.listdir(p))
         self.assertEqual(fl, negativefname)
-        warnings.warn(str(fl))
         fl = [p + e for e in fl]
         with mp.Pool(NCPU) as p:
             lret = p.map(myspeakingclock, fl)
         self.assertEqual(lret, negativeoutput)
 
+    def test_positive_short(self):
+        p = testpath + 'positive/'
+        fl = sorted(os.listdir(p))
+        self.assertEqual(fl, postivefname)
+        fl = [p + e for e in fl]
+        with mp.Pool(NCPU) as p:
+            lret = p.map(myspeakingclock_short, fl)
+        self.assertEqual(lret, postiveoutput)
 
+    def test_negative_short(self):
+        p = testpath + 'negative/'
+        fl = sorted(os.listdir(p))
+        self.assertEqual(fl, negativefname)
+        fl = [p + e for e in fl]
+        with mp.Pool(NCPU) as p:
+            lret = p.map(myspeakingclock_short, fl)
+        self.assertEqual(lret, negativeoutput)
 
 if __name__ == '__main__':
     unittest.main()

@@ -29,13 +29,13 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--media', required=True,
                         help='full path to media to analyze')
 
-    parser.add_argument('-t', '--tmpdir', default='/dev/shm/',
-                        help=''' Temporary directory used to store intermediate files. Should
-        be a fast access directory such as Ram Disk or SSD hard drive. Default
-        value: /dev/shm (linux ram disk)''')
 
     parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'),
                         help='output file for the result. Default value: /dev/stdout.')
+
+    parser.add_argument('-d', '--max_dur_sec', default=None, type=float,
+                        help='max duration to analyse in seconds, if not provided analyze the whole file')
+
 
     parser.add_argument('-f', '--ffmpeg', default='ffmpeg',
                         help='''Full path to ffmpeg binary. If not provided, this will used
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         with ffmpeg version 2.8.8-0ubuntu0.16.04.1''')
 
     args = parser.parse_args()
-    ret = speaking_clock_detection(args.media, args.tmpdir, args.ffmpeg)
+    ret = speaking_clock_detection(args.media, args.ffmpeg, dur_sec=args.max_dur_sec)
 
 
     if ret >= 0:

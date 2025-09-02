@@ -11,49 +11,81 @@ Which leads to diff bip pattern of 17, 3*1; 4*10
 """
 
 
-import os
-import sys
+#import os
+#import sys
 import numpy as np
 import soundfile
-from subprocess import check_output, STDOUT, CalledProcessError
+#from subprocess import check_output, STDOUT, CalledProcessError
+#from subprocess import Popen, PIPE
+import subprocess
+from tempfile import TemporaryFile#, NamedTemporaryFile
 from .scikits_talkbox import my_specgram
 
 
-def decode_media(infname, tmpdir, ffmpeg='ffmpeg', outsr=4000):
-    """
-    Decode any media to a numpy array sampled at 'outsr' Hz
-    Args:
-    * infname: full path to input media
-    * outfname: full path to decoded media.
-    * ffmpeg: full path to ffmpeg binary.
-    * outsr: output sampling rate.
-    """
+class TmpWavDecoder:
+    def __init__(self, ffmpeg='ffmpeg', outsr=4000, dur_sec=None):
+        self.ffmpeg = ffmpeg
+        self.outsr = outsr
+#        self.tmpdir = tmpdir
+        self.dur_sec = dur_sec
 
-    # check input arguments
-    assert os.path.exists(infname), 'input media %s cannot be accessed!' % infname
-    assert os.path.exists(tmpdir), 'temp directory %s should exist!' % tmpdir
-    # set temp wav file name
-    _, tail = os.path.split(infname)
-    tmp_wav = '%s/%s.wav' % (tmpdir, tail)
-    assert not os.path.exists(tmp_wav), 'Temp Wav %s already exists! Remove it first' % tmp_wav
+    def __call__(self, infname):
+        #infname can be a path or a url
+        cmd = [self.ffmpeg, '-i', infname, '-f', 'wav', '-acodec', 'pcm_s16le', '-ar', str(self.outsr)]
+        if self.dur_sec is not None:
+            cmd += ['-to', '%f' % self.dur_sec]
+        cmd += ['pipe:1']
+        with TemporaryFile() as out, TemporaryFile() as err:
+            ret = subprocess.run(cmd, stdout=out, stderr=err)
+            if ret.returncode != 0:
+                err.seek(0)
+                msg = err.read()
+                raise Exception(msg)
+            out.seek(0)
+            wav_data, fs = soundfile.read(out)
+        assert(fs == self.outsr)
+        if len(wav_data.shape) == 1:
+            wav_data = np.expand_dims(wav_data, axis=1)
+        return wav_data
+            
 
-    # performs media decoding to wav with ffmpeg
-    cmd = [ffmpeg, '-i', infname, '-acodec', 'pcm_s16le', '-ar', str(outsr), tmp_wav]
-    try:
-        check_output(cmd, stderr=STDOUT)
-    except CalledProcessError as err:
-        if os.path.exists(tmp_wav):
-            os.remove(tmp_wav)
-        print(err.output, file=sys.stderr)
-        raise err
 
-    # decode wav and check wav properties
-    wav_data, fs = soundfile.read(tmp_wav)
-    os.remove(tmp_wav)
-    assert len(wav_data.shape) == 2, 'Input media should be stereo. Easy to fix'
-    assert len(wav_data) > 1  # media should not be empty
-    assert fs == outsr
-    return wav_data
+
+# def decode_media(infname, tmpdir, ffmpeg='ffmpeg', outsr=4000):
+#     """
+#     Decode any media to a numpy array sampled at 'outsr' Hz
+#     Args:
+#     * infname: full path to input media
+#     * outfname: full path to decoded media.
+#     * ffmpeg: full path to ffmpeg binary.
+#     * outsr: output sampling rate.
+#     """
+
+#     # check input arguments
+#     assert os.path.exists(infname), 'input media %s cannot be accessed!' % infname
+#     assert os.path.exists(tmpdir), 'temp directory %s should exist!' % tmpdir
+#     # set temp wav file name
+#     _, tail = os.path.split(infname)
+#     tmp_wav = '%s/%s.wav' % (tmpdir, tail)
+#     assert not os.path.exists(tmp_wav), 'Temp Wav %s already exists! Remove it first' % tmp_wav
+
+#     # performs media decoding to wav with ffmpeg
+#     cmd = [ffmpeg, '-i', infname, '-acodec', 'pcm_s16le', '-ar', str(outsr), tmp_wav]
+#     try:
+#         check_output(cmd, stderr=STDOUT)
+#     except CalledProcessError as err:
+#         if os.path.exists(tmp_wav):
+#             os.remove(tmp_wav)
+#         print(err.output, file=sys.stderr)
+#         raise err
+
+#     # decode wav and check wav properties
+#     wav_data, fs = soundfile.read(tmp_wav)
+#     os.remove(tmp_wav)
+#     assert len(wav_data.shape) == 2, 'Input media should be stereo. Easy to fix'
+#     assert len(wav_data) > 1  # media should not be empty
+#     assert fs == outsr
+#     return wav_data
 
 
 
@@ -164,14 +196,18 @@ def is_bip_pattern(bip_list, dur):
     return ((nb1 + nb10 + nb17) > 4 * nbother) and len(dbip) > (est_bips * 0.8) and len(dbip) < (est_bips * 1.2)
 
 
-def speaking_clock_detection(infname, tmpdir, ffmpeg):
+def speaking_clock_detection(infname, ffmpeg, dur_sec=None):
     """
     Returns the number of the channel corresponding to speaking clock
     -1 if speaking clock has not been found
     -2 if speaking clock has been found in more than 1 channel
     """
     # decode media to a 4kHz wav and store it in a numpy array
-    wav_data = decode_media(infname, tmpdir, ffmpeg, 4000)
+    twd = TmpWavDecoder(ffmpeg=ffmpeg, outsr=4000, dur_sec=dur_sec)
+    #wav_data = decode_media(infname, tmpdir, ffmpeg, 4000)
+    wav_data = twd(infname)
+    
+    
     ret = []
 
     for i in range(wav_data.shape[1]):
