@@ -10,6 +10,10 @@ The pattern corresponding to bips is 0 10 20 30 40 57 58 59
 Which leads to diff bip pattern of 17, 3*1; 4*10
 """
 
+## ffmpeg -i /rex/store2a/home/sdevauchelle/corpus/diachronique_1980/raw_ts/tv/MGCPB0042023.01.ts -filter_complex "[0:a]channelsplit=channel_layout=stereo[left][right]; [left]volume=1[left]; [right]volume=-1[right]; [left][right]amix=inputs=2" -ac 1 /tmp/mixv3.wav
+
+
+
 
 #import os
 #import sys
@@ -23,17 +27,22 @@ from .scikits_talkbox import my_specgram
 
 
 class TmpWavDecoder:
-    def __init__(self, ffmpeg='ffmpeg', outsr=4000, dur_sec=None):
+    def __init__(self, ffmpeg='ffmpeg', outsr=4000, start_sec = None, end_sec=None):
         self.ffmpeg = ffmpeg
         self.outsr = outsr
 #        self.tmpdir = tmpdir
-        self.dur_sec = dur_sec
+        self.start_sec = start_sec
+        self.end_sec = end_sec
 
     def __call__(self, infname):
         #infname can be a path or a url
-        cmd = [self.ffmpeg, '-i', infname, '-f', 'wav', '-acodec', 'pcm_s16le', '-ar', str(self.outsr)]
-        if self.dur_sec is not None:
-            cmd += ['-to', '%f' % self.dur_sec]
+        cmd = [self.ffmpeg, '-i', infname, '-f', 'wav', '-acodec', 'pcm_s16le']
+        if self.outsr is not None:
+            cmd += ['-ar', str(self.outsr)]
+        if self.start_sec is not None:
+            cmd += ['-ss', '%f' % self.start_sec]
+        if self.end_sec is not None:
+            cmd += ['-to', '%f' % self.end_sec]
         cmd += ['pipe:1']
         with TemporaryFile() as out, TemporaryFile() as err:
             ret = subprocess.run(cmd, stdout=out, stderr=err)
@@ -196,14 +205,14 @@ def is_bip_pattern(bip_list, dur):
     return ((nb1 + nb10 + nb17) > 4 * nbother) and len(dbip) > (est_bips * 0.8) and len(dbip) < (est_bips * 1.2)
 
 
-def speaking_clock_detection(infname, ffmpeg, dur_sec=None):
+def speaking_clock_detection(infname, ffmpeg, end_sec=None):
     """
     Returns the number of the channel corresponding to speaking clock
     -1 if speaking clock has not been found
     -2 if speaking clock has been found in more than 1 channel
     """
     # decode media to a 4kHz wav and store it in a numpy array
-    twd = TmpWavDecoder(ffmpeg=ffmpeg, outsr=4000, dur_sec=dur_sec)
+    twd = TmpWavDecoder(ffmpeg=ffmpeg, outsr=4000, end_sec=end_sec)
     #wav_data = decode_media(infname, tmpdir, ffmpeg, 4000)
     wav_data = twd(infname)
     
@@ -221,3 +230,18 @@ def speaking_clock_detection(infname, ffmpeg, dur_sec=None):
         return ret[0]
     if len(ret) > 1:
         return -2
+
+def phase_inversion_detection(infname, ffmpeg='ffmpeg', start_sec=None, end_sec=10):
+    twd = TmpWavDecoder(ffmpeg=ffmpeg, start_sec=start_sec, end_sec=end_sec)
+    wav_data = twd(infname)
+    _, nbchan = wav_data.shape
+    if nbchan == 1:
+        return 0
+    if nbchan > 2:
+        return -1
+    correlation = np.sum(wav_data[:, 0] * wav_data[:, 1])
+    if correlation < 0:
+        return 1
+    return 0
+    #if (start_sec is not None) and (end_sec is not None):
+    #    assert(start_sec < end_sec)

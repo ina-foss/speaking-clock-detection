@@ -44,7 +44,7 @@ def myspeakingclock(x):
 
 def myspeakingclock_short(x):
     # test on 10 mins max
-    return speaking_clock_detection(x, 'ffmpeg', dur_sec=60*10)
+    return speaking_clock_detection(x, 'ffmpeg', end_sec=60*10)
 
 
 class TestSpeakingClock(unittest.TestCase):

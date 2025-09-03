@@ -43,7 +43,7 @@ if __name__ == '__main__':
         with ffmpeg version 2.8.8-0ubuntu0.16.04.1''')
 
     args = parser.parse_args()
-    ret = speaking_clock_detection(args.media, args.ffmpeg, dur_sec=args.max_dur_sec)
+    ret = speaking_clock_detection(args.media, args.ffmpeg, end_sec=args.max_dur_sec)
 
 
     if ret >= 0:
