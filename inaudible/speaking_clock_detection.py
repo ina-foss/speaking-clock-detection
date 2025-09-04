@@ -15,6 +15,7 @@ import soundfile
 import subprocess
 from tempfile import TemporaryFile#, NamedTemporaryFile
 from .scikits_talkbox import my_specgram
+import warnings
 
 
 class TmpWavDecoder:
@@ -179,27 +180,43 @@ def speaking_clock_detection(infname, ffmpeg, end_sec=None):
     if len(ret) > 1:
         return -2
 
+
+
 def phase_inversion_detection(infname, ffmpeg='ffmpeg', start_sec=None, end_sec=120):
     twd = TmpWavDecoder(ffmpeg=ffmpeg, start_sec=start_sec, end_sec=end_sec)
     wav_data = twd(infname)
     _, nbchan = wav_data.shape
     if nbchan == 1:
-        return 0
+        return False
     if nbchan > 2:
-        return -1
-    correlation = np.sum(wav_data[:, 0] * wav_data[:, 1])
+        # TODO : implement something intelligent
+        warnings.warn('file %s has more than 2 tracks' % infname)
+        return False
+    l = wav_data[:, 0]
+    r = wav_data[:, 1]
+    lrms = np.sqrt(np.mean(l * l))
+    rrms = np.sqrt(np.mean(r * r))
+    db = 10 * np.log10(lrms / rrms)
+    if abs(db) > 10:
+        # a track is stronger than the other one, do not compute phase inversion
+        warnings.warn('empty track in file ' + infname)
+        return False    
+    
+    correlation = np.sum(l * r)
+    
     if correlation < 0:
         return True
     return False
 
 
 class WavExtractor:
-    def __init__(self, detect_clock=False, final_sr=16000, detect_clock_dur=None):
+    def __init__(self, detect_clock=False, final_sr=16000, detect_clock_dur=None, detect_phase_dur=120):
         self.detect_clock = detect_clock
         if detect_clock_dur is not None:
             assert(detect_clock == True)
         self.detect_clock_dur = detect_clock_dur
         self.final_sr = final_sr
+        self.detect_phase_dur = detect_phase_dur
     def __call__(self, src, dst):
         cmd = ['ffmpeg', '-i', src, '-ar', str(self.final_sr), '-f', 'wav', '-acodec', 'pcm_s16le']
         scd = -1
@@ -212,7 +229,7 @@ class WavExtractor:
         elif scd == 1:
             cmd += ['-filter_complex',  '[0:a]channelsplit=channel_layout=stereo:channels=FL[left]', '-map', '[left]']
         else:
-            dret['phase_inversion'] = phase_inversion_detection(src)
+            dret['phase_inversion'] = phase_inversion_detection(src, end_sec=self.detect_phase_dur)
             if dret['phase_inversion']:
                 cmd += ['-filter_complex', '[0:a]channelsplit=channel_layout=stereo[left][right]; [left]volume=1[left]; [right]volume=-1[right]; [left][right]amix=inputs=2']
             cmd += ['-ac', '1']
