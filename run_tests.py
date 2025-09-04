@@ -27,7 +27,7 @@
 import os
 import multiprocessing as mp
 import unittest
-from inaudible.speaking_clock_detection import speaking_clock_detection
+from inaudible.speaking_clock_detection import speaking_clock_detection, phase_inversion_detection
 
 testpath = '/rex/store2a/home/ddoukhan/2018_09_16_lucrate_titan/ddoukhan/corpus_horlange_parlante/'
 NCPU = mp.cpu_count() // 2
@@ -83,6 +83,10 @@ class TestSpeakingClock(unittest.TestCase):
         with mp.Pool(NCPU) as p:
             lret = p.map(myspeakingclock_short, fl)
         self.assertEqual(lret, negativeoutput)
+        
+    def test_phase_inversion(self):
+        f = '/rex/store2a/home/sdevauchelle/corpus/diachronique_1980/raw_ts/tv/MGCPB0042023.01.ts'
+        self.assertEqual(phase_inversion_detection(f), True)
 
 if __name__ == '__main__':
     unittest.main()

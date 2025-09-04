@@ -10,17 +10,8 @@ The pattern corresponding to bips is 0 10 20 30 40 57 58 59
 Which leads to diff bip pattern of 17, 3*1; 4*10
 """
 
-## ffmpeg -i /rex/store2a/home/sdevauchelle/corpus/diachronique_1980/raw_ts/tv/MGCPB0042023.01.ts -filter_complex "[0:a]channelsplit=channel_layout=stereo[left][right]; [left]volume=1[left]; [right]volume=-1[right]; [left][right]amix=inputs=2" -ac 1 /tmp/mixv3.wav
-
-
-
-
-#import os
-#import sys
 import numpy as np
 import soundfile
-#from subprocess import check_output, STDOUT, CalledProcessError
-#from subprocess import Popen, PIPE
 import subprocess
 from tempfile import TemporaryFile#, NamedTemporaryFile
 from .scikits_talkbox import my_specgram
@@ -30,7 +21,6 @@ class TmpWavDecoder:
     def __init__(self, ffmpeg='ffmpeg', outsr=4000, start_sec = None, end_sec=None):
         self.ffmpeg = ffmpeg
         self.outsr = outsr
-#        self.tmpdir = tmpdir
         self.start_sec = start_sec
         self.end_sec = end_sec
 
@@ -56,46 +46,6 @@ class TmpWavDecoder:
         if len(wav_data.shape) == 1:
             wav_data = np.expand_dims(wav_data, axis=1)
         return wav_data
-            
-
-
-
-# def decode_media(infname, tmpdir, ffmpeg='ffmpeg', outsr=4000):
-#     """
-#     Decode any media to a numpy array sampled at 'outsr' Hz
-#     Args:
-#     * infname: full path to input media
-#     * outfname: full path to decoded media.
-#     * ffmpeg: full path to ffmpeg binary.
-#     * outsr: output sampling rate.
-#     """
-
-#     # check input arguments
-#     assert os.path.exists(infname), 'input media %s cannot be accessed!' % infname
-#     assert os.path.exists(tmpdir), 'temp directory %s should exist!' % tmpdir
-#     # set temp wav file name
-#     _, tail = os.path.split(infname)
-#     tmp_wav = '%s/%s.wav' % (tmpdir, tail)
-#     assert not os.path.exists(tmp_wav), 'Temp Wav %s already exists! Remove it first' % tmp_wav
-
-#     # performs media decoding to wav with ffmpeg
-#     cmd = [ffmpeg, '-i', infname, '-acodec', 'pcm_s16le', '-ar', str(outsr), tmp_wav]
-#     try:
-#         check_output(cmd, stderr=STDOUT)
-#     except CalledProcessError as err:
-#         if os.path.exists(tmp_wav):
-#             os.remove(tmp_wav)
-#         print(err.output, file=sys.stderr)
-#         raise err
-
-#     # decode wav and check wav properties
-#     wav_data, fs = soundfile.read(tmp_wav)
-#     os.remove(tmp_wav)
-#     assert len(wav_data.shape) == 2, 'Input media should be stereo. Easy to fix'
-#     assert len(wav_data) > 1  # media should not be empty
-#     assert fs == outsr
-#     return wav_data
-
 
 
 def energy_idx(winlen):
@@ -213,9 +163,7 @@ def speaking_clock_detection(infname, ffmpeg, end_sec=None):
     """
     # decode media to a 4kHz wav and store it in a numpy array
     twd = TmpWavDecoder(ffmpeg=ffmpeg, outsr=4000, end_sec=end_sec)
-    #wav_data = decode_media(infname, tmpdir, ffmpeg, 4000)
-    wav_data = twd(infname)
-    
+    wav_data = twd(infname) 
     
     ret = []
 
@@ -231,7 +179,7 @@ def speaking_clock_detection(infname, ffmpeg, end_sec=None):
     if len(ret) > 1:
         return -2
 
-def phase_inversion_detection(infname, ffmpeg='ffmpeg', start_sec=None, end_sec=10):
+def phase_inversion_detection(infname, ffmpeg='ffmpeg', start_sec=None, end_sec=120):
     twd = TmpWavDecoder(ffmpeg=ffmpeg, start_sec=start_sec, end_sec=end_sec)
     wav_data = twd(infname)
     _, nbchan = wav_data.shape
@@ -241,7 +189,38 @@ def phase_inversion_detection(infname, ffmpeg='ffmpeg', start_sec=None, end_sec=
         return -1
     correlation = np.sum(wav_data[:, 0] * wav_data[:, 1])
     if correlation < 0:
-        return 1
-    return 0
-    #if (start_sec is not None) and (end_sec is not None):
-    #    assert(start_sec < end_sec)
+        return True
+    return False
+
+
+class WavExtractor:
+    def __init__(self, detect_clock=False, final_sr=16000, detect_clock_dur=None):
+        self.detect_clock = detect_clock
+        if detect_clock_dur is not None:
+            assert(detect_clock == True)
+        self.detect_clock_dur = detect_clock_dur
+        self.final_sr = final_sr
+    def __call__(self, src, dst):
+        cmd = ['ffmpeg', '-i', src, '-ar', str(self.final_sr), '-f', 'wav', '-acodec', 'pcm_s16le']
+        scd = -1
+        dret = {}
+        if self.detect_clock:
+            scd = speaking_clock_detection(src, 'ffmpeg', self.detect_clock_dur)
+            dret['speaking_clock'] = scd
+        if scd == 0:
+            cmd += ['-filter_complex',  '[0:a]channelsplit=channel_layout=stereo:channels=FR[right]', '-map', '[right]']
+        elif scd == 1:
+            cmd += ['-filter_complex',  '[0:a]channelsplit=channel_layout=stereo:channels=FL[left]', '-map', '[left]']
+        else:
+            dret['phase_inversion'] = phase_inversion_detection(src)
+            if dret['phase_inversion']:
+                cmd += ['-filter_complex', '[0:a]channelsplit=channel_layout=stereo[left][right]; [left]volume=1[left]; [right]volume=-1[right]; [left][right]amix=inputs=2']
+            cmd += ['-ac', '1']
+        cmd += [dst]
+        ret = subprocess.run(cmd, capture_output=True)
+        dret['return_code'] = ret.returncode
+        if ret.returncode:
+            dret['errmsg'] = ret.stderr.decode('utf-8')
+        return dret
+
+
