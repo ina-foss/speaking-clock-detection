@@ -27,7 +27,7 @@
 import os
 import multiprocessing as mp
 import unittest
-from inaudible.speaking_clock_detection import speaking_clock_detection, phase_inversion_detection
+from inaudible import speaking_clock_detection, phase_inversion_detection
 
 testpath = '/rex/store2a/home/ddoukhan/2018_09_16_lucrate_titan/ddoukhan/corpus_horlange_parlante/'
 NCPU = mp.cpu_count() // 2

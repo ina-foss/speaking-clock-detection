@@ -14,7 +14,7 @@ import sys
 import argparse
 
 
-from inaudible.speaking_clock_detection import speaking_clock_detection
+from inaudible import speaking_clock_detection
 
 
 if __name__ == '__main__':

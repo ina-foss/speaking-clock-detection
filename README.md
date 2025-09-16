@@ -44,3 +44,26 @@ It will output one of the three following values:
 - `SPEAKING_CLOCK_NONE` if no speaking clock has been detected
 - `SPEAKING_CLOCK_MULTIPLE` if multiple speaking clocks have been detected (this is usually an error)
 
+### Python Usage
+
+Python example using the WavExtractor :
+
+```python
+from inaudible import WavExtractor
+
+wav_file = "/file/to/detect/speaking_clock.wav"
+output_file = "/outputpath/speaking_clock.wav"
+
+# init the speaking clock detection by setting `detect_clock=True`
+wext = WavExtractor(
+    detect_clock=True,
+    detect_clock_dur=60*10,
+    detect_phase_dur=120
+)
+
+# detect the speaking clock and export the right channel
+dret = wext(wav_file, output_file)
+
+# print the result
+print(dret)
+```
