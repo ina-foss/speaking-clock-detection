@@ -1,4 +1,5 @@
 # Speaking Clock Detection
+[![PyPI version](https://badge.fury.io/py/speaking-clock-detection.svg)](https://badge.fury.io/py/speaking-clock-detection)
 
 This tool can be used to detect on which channel a [speaking clock](https://en.wikipedia.org/wiki/Speaking_clock) is present. It only works on stereo audio files, where either the left or right channel contain only the speaking clock. This tool has only been tested with the French official Speaking Clock.
 
